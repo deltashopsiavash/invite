@@ -1,0 +1,4 @@
+# This project is deployed as static files.
+.DS_Store
+*.swp
+*.bak
