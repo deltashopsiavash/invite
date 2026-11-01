@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#d7edff">
+  <title>پنل مدیریت دعوت 💌</title>
+  <link rel="stylesheet" href="/admin/admin.css?v=2">
+  <script defer src="/admin/admin.js?v=2"></script>
+</head>
+<body>
+  <div class="shell">
+    <header><a class="brand" href="/">💌 دعوت من</a><span class="header-tag">پنل مدیریت</span></header>
+    <main>
+      <section class="login-card" id="login-box">
+        <div class="login-emoji">🔐</div><h1>ورود به مدیریت</h1><p>رمز مدیریتی که هنگام نصب دریافت کردی رو وارد کن.</p>
+        <form id="login-form"><label for="admin-password">رمز عبور</label><input id="admin-password" type="password" autocomplete="current-password" required><button class="btn primary" type="submit">ورود به پنل</button></form>
+        <p id="login-error" class="error" role="alert"></p>
+      </section>
+      <section id="dashboard" hidden>
+        <div class="dash-top"><div><h1>مدیریت دعوت 💕</h1><p>متن‌ها، تصویرها و جواب‌ها رو از همینجا مدیریت کن.</p></div><button type="button" class="btn ghost" id="logout">خروج</button></div>
+        <nav class="tabs" aria-label="بخش‌های مدیریت">
+          <button class="tab active" data-tab="content" type="button">✏️ متن‌ها</button>
+          <button class="tab" data-tab="images" type="button">🖼️ عکس و ایموجی</button>
+          <button class="tab" data-tab="answers" type="button">💌 جواب‌ها</button>
+          <button class="tab" data-tab="security" type="button">🔒 امنیت</button>
+        </nav>
+        <section id="tab-content" class="tab-panel">
+          <div class="panel"><h2>نام شخص و متن مراحل</h2><p class="sub">هر تغییری که ذخیره کنی بلافاصله در سایت عمومی نمایش داده می‌شه.</p><div id="content-fields"></div></div>
+        </section>
+        <section id="tab-images" class="tab-panel" hidden>
+          <div class="panel"><h2>عکس یا ایموجی هر مرحله</h2><p class="sub">برای هر مرحله می‌تونی ایموجی بنویسی یا تصویر JPG، PNG، WebP یا GIF زیر ۳ مگابایت بارگذاری کنی. عکس اولویت داره.</p><div id="icon-fields" class="icon-fields"></div></div>
+        </section>
+        <section id="tab-answers" class="tab-panel" hidden>
+          <div class="panel"><div class="answer-header"><div><h2>جواب‌های ثبت‌شده</h2><p class="sub" id="answers-count">در حال دریافت...</p></div><div class="answer-actions"><button class="btn ghost" type="button" id="refresh-answers">بروزرسانی</button><a class="btn outline" href="/api/admin/responses.csv" id="download-csv">دانلود CSV</a></div></div>
+          <div class="table-wrap"><table><thead><tr><th>ردیف</th><th>نام</th><th>تاریخ شمسی</th><th>ساعت</th><th>انتخاب</th><th>زمان ثبت</th></tr></thead><tbody id="answers-body"></tbody></table></div></div>
+        </section>
+        <section id="tab-security" class="tab-panel" hidden>
+          <div class="panel"><h2>تغییر رمز عبور</h2><p class="sub">از یک رمز جدید و قوی با حداقل ۱۲ کاراکتر استفاده کن.</p>
+            <form id="password-form" class="security-form"><label for="old-password">رمز فعلی</label><input id="old-password" type="password" autocomplete="current-password" required>
+            <label for="new-password">رمز جدید</label><input id="new-password" type="password" minlength="12" autocomplete="new-password" required>
+            <button class="btn primary" type="submit">تغییر رمز</button></form></div>
+        </section>
+        <div id="save-bar" class="save-bar"><span id="status-message" role="status"></span><button class="btn primary" type="button" id="save-config">💾 ذخیره تغییرات</button></div>
+      </section>
+    </main>
+    <footer>ساخته‌شده برای یک دعوت خاص 💗</footer>
+  </div>
+</body>
+</html>

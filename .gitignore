@@ -1,4 +1,7 @@
-# This project is deployed as static files.
+node_modules/
 .DS_Store
 *.swp
 *.bak
+.env
+*.sqlite
+uploads/

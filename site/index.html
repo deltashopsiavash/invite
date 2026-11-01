@@ -1,74 +1,89 @@
 <!doctype html>
 <html lang="fa" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#fff1f6" />
-  <meta name="description" content="یه دعوت کوچولو برای یه قرار قشنگ 💌" />
-  <title>یه سوال کوچولو 💌</title>
-  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="/assets/styles.css" />
-  <script defer src="/assets/app.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#b5e4ff">
+  <meta name="description" content="یه دعوت متفاوت، فقط برای تو 💌">
+  <title>یه سوال کوچولو 💙</title>
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/styles.css?v=2">
+  <script defer src="/assets/app.js?v=2"></script>
 </head>
 <body>
-  <div class="background-art" aria-hidden="true">
-    <span class="blur-circle blur-circle--one"></span><span class="blur-circle blur-circle--two"></span>
-    <span class="float-heart heart-a">♡</span><span class="float-heart heart-b">♥</span>
-    <span class="float-heart heart-c">♡</span><span class="float-heart heart-d">♥</span>
-    <span class="float-heart heart-e">♡</span>
+  <div class="scene" aria-hidden="true">
+    <div class="aura aura--one"></div><div class="aura aura--two"></div>
+    <span class="floating floating--heart f1">💗</span><span class="floating floating--letter f2">💌</span>
+    <span class="floating floating--heart f3">💖</span><span class="floating floating--letter f4">💌</span>
+    <span class="floating floating--heart f5">💕</span><span class="floating floating--letter f6">💌</span>
+    <span class="floating floating--heart f7">💗</span><span class="floating floating--letter f8">💌</span>
+    <span class="floating floating--heart f9">💕</span><span class="floating floating--letter f10">💌</span>
+    <span class="floating floating--heart f11">💖</span><span class="floating floating--letter f12">💌</span>
   </div>
-  <main class="page-wrap">
+  <div id="heart-layer" class="heart-layer" aria-hidden="true"></div>
+  <main class="page">
     <div class="invite-card">
-      <div class="top-decoration" aria-hidden="true"><span></span><span></span><span></span></div>
-      <section class="screen screen--active" id="screen-question" aria-labelledby="question-title">
-        <div class="emoji-icon" aria-hidden="true">🥺</div>
-        <p class="eyebrow">یه دعوت خاص برای یه آدم خاص</p>
-        <h1 id="question-title">با من میای سر قرار؟</h1>
-        <p class="intro">فقط یه سوال ساده‌ست... جواب درست هم فقط یکیشه 😏</p>
-        <div class="decision-buttons" id="decision-buttons">
-          <button type="button" class="button button--primary" id="yes-button">آره 💕</button>
-          <button type="button" class="button button--secondary" id="no-button">نه</button>
+      <div class="progress" aria-label="مراحل دعوت">
+        <span class="progress-dot active"></span><span class="progress-dot"></span>
+        <span class="progress-dot"></span><span class="progress-dot"></span>
+      </div>
+      <section class="screen active" id="step-question">
+        <div class="feature-icon" id="icon-question">🥺</div>
+        <p class="person" id="person" hidden></p>
+        <p class="eyebrow" id="questionEyebrow"></p>
+        <h1 id="questionTitle">با من میای سر قرار؟</h1>
+        <p class="description" id="questionIntro"></p>
+        <div class="answers">
+          <button id="yes-btn" class="primary-btn" type="button">آره 💕</button>
+          <button id="no-btn" class="secondary-btn" type="button">نه</button>
         </div>
-        <p class="tease-message" id="tease-message" aria-live="polite"></p>
+        <p id="no-message" class="helper" aria-live="polite"></p>
       </section>
-      <section class="screen" id="screen-datetime" aria-labelledby="datetime-title" hidden>
-        <div class="emoji-icon" aria-hidden="true">📅</div>
-        <p class="eyebrow">مرحله‌ی بعدی</p>
-        <h1 id="datetime-title">کی وقت داری؟</h1>
-        <p class="intro">یه تاریخ و ساعت خوب برام انتخاب کن</p>
-        <form id="datetime-form" class="date-form">
-          <label for="date-input">تاریخ</label>
-          <input id="date-input" name="date" type="date" required autocomplete="off" />
-          <label for="time-input">ساعت</label>
-          <input id="time-input" name="time" type="time" required autocomplete="off" />
-          <p id="date-error" class="form-error" role="alert" hidden>لطفاً تاریخ و ساعت قرار رو انتخاب کن 💕</p>
-          <button class="button button--primary button--full" type="submit">بعدی ✨</button>
-        </form>
-      </section>
-      <section class="screen" id="screen-food" aria-labelledby="food-title" hidden>
-        <div class="emoji-icon" aria-hidden="true">🍽️</div>
-        <p class="eyebrow">فقط یه انتخاب دیگه</p>
-        <h1 id="food-title">چی سفارش میدی؟</h1>
-        <p class="intro">یه چیز خوشمزه انتخاب کن که مهمونت باشی</p>
-        <div class="food-grid" role="group" aria-label="انتخاب سفارش">
-          <button class="food-option" type="button" data-food="قهوه" aria-pressed="false"><span class="food-icon" aria-hidden="true">☕</span><span>قهوه</span></button>
-          <button class="food-option" type="button" data-food="پیتزا" aria-pressed="false"><span class="food-icon" aria-hidden="true">🍕</span><span>پیتزا</span></button>
-          <button class="food-option" type="button" data-food="پاستا" aria-pressed="false"><span class="food-icon" aria-hidden="true">🍝</span><span>پاستا</span></button>
-          <button class="food-option" type="button" data-food="کوبیده" aria-pressed="false"><span class="food-icon" aria-hidden="true">🍢</span><span>کوبیده</span></button>
+      <section class="screen" id="step-date" hidden>
+        <div class="feature-icon" id="icon-date">📅</div>
+        <p class="eyebrow" id="dateEyebrow"></p>
+        <h1 id="dateTitle">کی وقت داری؟</h1>
+        <p class="description" id="dateIntro"></p>
+        <div class="calendar">
+          <div class="calendar-heading">
+            <button type="button" id="prev-month" class="month-btn" aria-label="ماه قبل">›</button>
+            <strong id="month-label"></strong>
+            <button type="button" id="next-month" class="month-btn" aria-label="ماه بعد">‹</button>
+          </div>
+          <div class="weekdays"><span>ش</span><span>ی</span><span>د</span><span>س</span><span>چ</span><span>پ</span><span>ج</span></div>
+          <div id="calendar-days" class="calendar-days" role="group" aria-label="انتخاب روز شمسی"></div>
         </div>
-        <p id="food-error" class="form-error" role="alert" hidden>اول یکی از خوشمزه‌ها رو انتخاب کن 😋</p>
-        <button type="button" class="button button--primary button--full" id="finish-button">بریم که بریم 💌</button>
+        <label class="time-label" for="time-input">ساعت قرار ⏰</label>
+        <input type="time" id="time-input" class="time-input" required>
+        <p id="date-error" class="error" role="alert" hidden>لطفاً روز و ساعت رو انتخاب کن 💕</p>
+        <button id="date-next" class="primary-btn full-btn" type="button">بعدی ✨</button>
       </section>
-      <section class="screen" id="screen-done" aria-labelledby="done-title" hidden>
-        <div class="emoji-icon emoji-icon--party" aria-hidden="true">🎉</div>
-        <p class="eyebrow">قرارمون شد!</p>
-        <h1 id="done-title">خوشحالم نگفتی نه!</h1>
-        <p class="intro intro--done">پس آماده باش، خودم میام دنبالت 🚗💨</p>
-        <div class="love-note">برای اینکه ازت درخواست کنم یه وبسایت طراحی کردم، چیز مهمی نبود 🙈</div>
-        <div class="done-hearts" aria-hidden="true">💗 💕 💗</div>
+      <section class="screen" id="step-food" hidden>
+        <div class="feature-icon" id="icon-food">🍽️</div>
+        <p class="eyebrow" id="foodEyebrow"></p>
+        <h1 id="foodTitle">چی سفارش میدی؟</h1>
+        <p class="description" id="foodIntro"></p>
+        <div class="food-grid">
+          <button type="button" class="food" data-food="قهوه" aria-pressed="false"><span>☕</span>قهوه</button>
+          <button type="button" class="food" data-food="پیتزا" aria-pressed="false"><span>🍕</span>پیتزا</button>
+          <button type="button" class="food" data-food="پاستا" aria-pressed="false"><span>🍝</span>پاستا</button>
+          <button type="button" class="food" data-food="کوبیده" aria-pressed="false"><span>🍢</span>کوبیده</button>
+        </div>
+        <p id="food-error" class="error" role="alert" hidden>یکی از خوشمزه‌ها رو انتخاب کن 😋</p>
+        <button id="finish-btn" class="primary-btn full-btn" type="button">بریم که بریم 💌</button>
+      </section>
+      <section class="screen" id="step-done" hidden>
+        <div class="feature-icon" id="icon-done">🎉</div>
+        <p class="eyebrow" id="doneEyebrow"></p>
+        <h1 id="doneTitle">خوشحالم نگفتی نه!</h1>
+        <p class="date-highlight" id="final-promise"></p>
+        <div class="final-summary"><span>📅 <b id="final-date"></b></span><span>⏰ <b id="final-time"></b></span><span>🍕 <b id="final-food"></b></span></div>
+        <p class="description done-desc" id="doneIntro"></p>
+        <p class="love-note" id="doneNote"></p>
+        <div class="end-hearts" aria-hidden="true">💗 💕 💗</div>
       </section>
     </div>
-    <footer class="footer-text">ساخته شده با کلی عشق <span aria-hidden="true">♥</span></footer>
+    <footer id="footer"></footer>
   </main>
 </body>
 </html>

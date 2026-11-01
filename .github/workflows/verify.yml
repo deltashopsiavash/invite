@@ -1,0 +1,23 @@
+name: Verify Invite V2
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --omit=dev --no-audit --no-fund --package-lock=false
+      - name: Check syntax
+        run: npm run check
+      - name: Check shell scripts
+        run: bash -n scripts/install.sh scripts/update.sh scripts/deploy.sh
+      - name: Integration tests
+        run: node --test tests/integration.test.js

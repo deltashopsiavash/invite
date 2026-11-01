@@ -1,0 +1,16 @@
+{
+  "name": "invite",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Romantic invitation site with admin, persistent SQLite and Jalali date selection",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "check": "node --check server/index.js && node --check site/assets/app.js && node --check site/admin/admin.js"
+  },
+  "dependencies": {
+    "express": "4.21.2",
+    "sql.js": "1.13.0",
+    "multer": "2.0.2"
+  }
+}
