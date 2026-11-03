@@ -1,7 +1,7 @@
 'use strict';
 (() => {
   const $=id=>document.getElementById(id);
-  let csrf='',settings={},activeTab='content';
+  let csrf='',settings={},activeTab='invitations',invitations=[],activeInvitation=null;
   const groups=[
     ['صفحه اول',[['personName','اسم شخص (در صفحه اول نمایش داده می‌شه)'],['questionEyebrow','متن بالای عنوان'],['questionTitle','عنوان اصلی'],['questionIntro','توضیح زیر عنوان'],['yesLabel','متن دکمه آره'],['noLabel','متن دکمه نه']]],
     ['انتخاب تاریخ',[['dateEyebrow','متن بالای عنوان'],['dateTitle','عنوان'],['dateIntro','توضیح'],['nextLabel','متن دکمه بعدی']]],
@@ -44,11 +44,111 @@
     }catch(error){$('login-error').textContent=error.message;}
     finally{button.disabled=false;}
   });
-  async function openDashboard(){
-    const config=await api('/api/admin/config');
-    settings={...config};renderFields();renderIcons();toggleAuth(true);
-    await loadResponses();
+  function invitationUrl(slug){return location.origin+'/'+encodeURIComponent(slug);}
+  function setTab(tab){
+    if(['content','images'].includes(tab) && !activeInvitation)tab='invitations';
+    activeTab=tab;
+    document.querySelectorAll('[data-tab]').forEach(button=>button.classList.toggle('active',button.dataset.tab===tab));
+    ['invitations','content','images','answers','security'].forEach(name=>$('tab-'+name).hidden=name!==tab);
+    $('save-bar').hidden=!['content','images'].includes(tab)||!activeInvitation;
+    $('selected-invite-bar').hidden=!activeInvitation || tab==='invitations'||tab==='security';
+    if(tab==='answers')loadResponses();
   }
+  async function openDashboard(){
+    toggleAuth(true);
+    await refreshInvitations();
+    setTab('invitations');
+  }
+  async function refreshInvitations(selectId){
+    invitations=await api('/api/admin/invitations');
+    renderInvitationList();
+    renderAnswerFilters();
+    if(selectId){
+      await selectInvitation(selectId,false);
+    }else if(activeInvitation && invitations.some(i=>i.id===activeInvitation.id)){
+      await selectInvitation(activeInvitation.id,false);
+    }else if(invitations.length){
+      await selectInvitation(invitations[0].id,false);
+    }else{
+      activeInvitation=null;
+      $('selected-invite-bar').hidden=true;
+      $('content-fields').replaceChildren();
+      $('icon-fields').replaceChildren();
+      $('save-bar').hidden=true;
+    }
+  }
+  function renderInvitationList(){
+    const list=$('invite-list');list.replaceChildren();
+    if(!invitations.length){const p=document.createElement('p');p.className='sub';p.textContent='هنوز لینکی نساختی. از فرم بالا اولین دعوت رو بساز 💌';list.append(p);return;}
+    for(const invite of invitations){
+      const card=document.createElement('div');
+      card.className='invite-card-small'+(activeInvitation?.id===invite.id?' selected':'');
+      const name=document.createElement('strong');name.textContent=invite.name;
+      const link=document.createElement('a');link.className='link-line';link.href=invitationUrl(invite.slug);link.target='_blank';link.rel='noopener noreferrer';link.textContent=invitationUrl(invite.slug);
+      const count=document.createElement('small');count.textContent=toFa(invite.responses_count)+' جواب ثبت‌شده';
+      const actions=document.createElement('div');actions.className='actions';
+      const select=document.createElement('button');select.type='button';select.className='btn primary';select.textContent='انتخاب و ویرایش';
+      select.addEventListener('click',async()=>{await selectInvitation(invite.id);setTab('content');});
+      const copy=document.createElement('button');copy.type='button';copy.className='btn ghost';copy.textContent='کپی لینک';
+      copy.addEventListener('click',()=>copyUrl(invitationUrl(invite.slug)));
+      const remove=document.createElement('button');remove.type='button';remove.className='btn outline';remove.textContent='حذف لینک';
+      remove.addEventListener('click',async()=>{
+        if(!confirm('لینک '+invite.name+' حذف بشه؟ جواب‌های قبلی در بخش همه پاسخ‌ها باقی می‌مونن.'))return;
+        try{
+          await api('/api/admin/invitations/'+invite.id,{method:'DELETE'});
+          if(activeInvitation?.id===invite.id)activeInvitation=null;
+          await refreshInvitations();
+          setTab('invitations');
+        }catch(error){alert(error.message);}
+      });
+      actions.append(select,copy,remove);card.append(name,link,count,actions);list.append(card);
+    }
+  }
+  async function copyUrl(url){
+    try{await navigator.clipboard.writeText(url);status('لینک کپی شد ✅');}
+    catch{window.prompt('لینک رو کپی کن:',url);}
+  }
+  async function selectInvitation(id,rerenderList=true){
+    const result=await api('/api/admin/invitations/'+id);
+    activeInvitation={id:result.id,name:result.name,slug:result.slug};
+    settings={...result.config};
+    $('invite-slug').value=result.slug;
+    const link=$('selected-invite-url');link.href=invitationUrl(result.slug);link.textContent=invitationUrl(result.slug);
+    $('selected-invite-bar').hidden=false;
+    renderFields();renderIcons();
+    if(rerenderList)renderInvitationList();
+    renderAnswerFilters(String(result.id));
+    status('در حال ویرایش لینک '+result.name);
+  }
+  $('create-invite-form').addEventListener('submit',async event=>{
+    event.preventDefault();
+    const name=$('new-person').value.trim(),slug=$('new-slug').value.trim();
+    const button=$('create-invite-form').querySelector('button');
+    button.disabled=true;$('create-error').textContent='';
+    try{
+      const result=await api('/api/admin/invitations',{method:'POST',body:JSON.stringify({name,slug})});
+      $('create-invite-form').reset();
+      await refreshInvitations(result.id);
+      setTab('content');
+    }catch(error){$('create-error').textContent=error.message;}
+    finally{button.disabled=false;}
+  });
+  $('copy-current-link').addEventListener('click',()=>{if(activeInvitation)copyUrl(invitationUrl(activeInvitation.slug));});
+  function renderAnswerFilters(selectedId){
+    const picker=$('answers-filter');
+    const chosen=selectedId||(picker.value||'all');
+    picker.replaceChildren();
+    for(const [value,name] of [['all','همه لینک‌ها'],['legacy','لینک اصلی (بدون اسم)'],...invitations.map(x=>[String(x.id),x.name+' / '+x.slug])]){
+      const option=document.createElement('option');option.value=value;option.textContent=name;picker.append(option);
+    }
+    picker.value=[...picker.options].some(x=>x.value===chosen)?chosen:'all';
+    updateDownloadUrl();
+  }
+  function updateDownloadUrl(){
+    $('download-csv').href='/api/admin/responses.csv?invitationId='+encodeURIComponent($('answers-filter').value||'all');
+  }
+  $('answers-filter').addEventListener('change',()=>{updateDownloadUrl();loadResponses();});
+
   function renderFields(){
     const root=$('content-fields');root.replaceChildren();
     for(const [name,fields] of groups){
@@ -109,19 +209,26 @@
     } else preview.textContent=$('icon-emoji-'+stage).value||defaults[stage];
   }
   $('save-config').addEventListener('click',async()=>{
+    if(!activeInvitation){status('اول یک لینک اختصاصی بساز.',true);return;}
     const payload={...settings};
     for(const group of groups)for(const [key] of group[1])payload[key]=$('setting-'+key).value;
     for(const [stage] of stages)payload[stage+'Emoji']=$('icon-emoji-'+stage).value;
     const button=$('save-config');button.disabled=true;status('در حال ذخیره...');
     try{
-      const result=await api('/api/admin/config',{method:'PUT',body:JSON.stringify(payload)});
-      settings=result.config;status('✅ همه تغییرات ذخیره شدند و در سایت نمایش داده می‌شن.');
+      const result=await api('/api/admin/invitations/'+activeInvitation.id,{method:'PUT',body:JSON.stringify({
+        name:payload.personName,slug:$('invite-slug').value.trim(),config:payload
+      })});
+      settings=result.config;
+      activeInvitation={id:result.id,name:result.name,slug:result.slug};
+      await refreshInvitations(result.id);
+      setTab(activeTab);
+      status('✅ تغییرات این لینک ذخیره شد.');
     }catch(error){status(error.message,true);}finally{button.disabled=false;}
   });
   async function loadResponses(){
     const tbody=$('answers-body');tbody.replaceChildren();
     try{
-      const data=await api('/api/admin/responses?limit=200');
+      const data=await api('/api/admin/responses?limit=200&invitationId='+encodeURIComponent($('answers-filter').value||'all'));
       $('answers-count').textContent=toFa(data.total)+' پاسخ ثبت‌شده (نمایش جدیدترین ۲۰۰ مورد)';
       if(!data.rows.length){const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=6;td.textContent='هنوز پاسخی ثبت نشده 💌';tr.append(td);tbody.append(tr);return;}
       for(const row of data.rows){
@@ -135,15 +242,7 @@
   }
   const toFa=n=>String(n).replace(/[0-9]/g,ch=>'۰۱۲۳۴۵۶۷۸۹'[Number(ch)]);
   $('refresh-answers').addEventListener('click',loadResponses);
-  document.querySelectorAll('[data-tab]').forEach(button=>{
-    button.addEventListener('click',()=>{
-      activeTab=button.dataset.tab;
-      document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b===button));
-      ['content','images','answers','security'].forEach(tab=>$('tab-'+tab).hidden=tab!==activeTab);
-      $('save-bar').hidden=!['content','images'].includes(activeTab);
-      if(activeTab==='answers')loadResponses();
-    });
-  });
+  document.querySelectorAll('[data-tab]').forEach(button=>button.addEventListener('click',()=>setTab(button.dataset.tab)));
   $('password-form').addEventListener('submit',async(event)=>{
     event.preventDefault();
     try{

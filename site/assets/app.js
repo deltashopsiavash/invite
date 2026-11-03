@@ -6,6 +6,21 @@
   const stages=Object.fromEntries(stageNames.map(k=>[k,$('step-'+k)]));
   let active='question',busy=false,noCount=0,selectedFood='',selectedDate='',chosenTime='';
   const requestId=crypto.randomUUID();
+  // Each invitation is addressed at /<person-slug>, including Persian Unicode names.
+  let inviteSlug='';
+  try{
+    const parts=location.pathname.split('/').filter(Boolean);
+    if(parts.length===1)inviteSlug=decodeURIComponent(parts[0]);
+  }catch{}
+  function invitationUnavailable(message){
+    setText('questionTitle','لینک دعوت پیدا نشد 💌');
+    setText('questionIntro',message);
+    $('person').hidden=true;
+    $('yes-btn').disabled=true;
+    $('no-btn').disabled=true;
+    $('no-btn').hidden=true;
+    setText('no-message','از فرستنده بخواه لینک صحیح رو برات بفرسته.');
+  }
   const defaults={
     personName:'',questionEyebrow:'یه دعوت خاص برای یه آدم خاص',questionTitle:'با من میای سر قرار؟',
     questionIntro:'فقط یه سوال ساده‌ست... جواب درست هم فقط یکیشه 😏',yesLabel:'آره 💕',noLabel:'نه',
@@ -36,8 +51,10 @@
       }else icon.textContent=emoji;
     }
   }
-  fetch('/api/public/config',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('Config unavailable');return r.json();})
-    .then(applyConfig).catch(()=>{applyConfig(defaults);setText('no-message','ارتباط با سرور موقتاً برقرار نیست.');});
+  fetch('/api/public/config'+(inviteSlug?'?slug='+encodeURIComponent(inviteSlug):''),{cache:'no-store'})
+    .then(async r=>{if(!r.ok)throw Error(r.status===404?'این لینک معتبر نیست یا حذف شده است.':'ارتباط با سرور برقرار نشد.');return r.json();})
+    .then(applyConfig)
+    .catch(error=>{invitationUnavailable(error.message);});
   function burst(count=28) {
     if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
     const layer=$('heart-layer');
@@ -135,7 +152,7 @@
     try{
       const response=await fetch('/api/public/response',{
         method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({requestId,date:selectedDate,time:chosenTime,food:selectedFood})
+        body:JSON.stringify({requestId,slug:inviteSlug,date:selectedDate,time:chosenTime,food:selectedFood})
       });
       const payload=await response.json();
       if(!response.ok)throw Error(payload.error||'مشکلی در ثبت پیش آمد.');

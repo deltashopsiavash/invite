@@ -53,11 +53,13 @@ else
 fi
 (cd "$APP_DIR" && npm run check)
 
-FIRST_PASSWORD=''
-if [ ! -f "$DATA_DIR/invite.sqlite" ]; then
-  msg 'ساخت حساب مدیریت برای اولین بار...'
-  FIRST_PASSWORD="$(openssl rand -hex 16)"
-  printf '%s' "$FIRST_PASSWORD" | runuser -u invite -- env INVITE_DATA_DIR="$DATA_DIR" node "$APP_DIR/server/index.js" bootstrap
+FIRST_PASSWORD="$(openssl rand -hex 16)"
+BOOT_STATUS="$(printf '%s' "$FIRST_PASSWORD" | runuser -u invite -- env INVITE_DATA_DIR="$DATA_DIR" node "$APP_DIR/server/index.js" bootstrap)"
+if [ "$BOOT_STATUS" = 'CREATED' ]; then
+  msg 'حساب مدیریت تازه ساخته شد.'
+else
+  FIRST_PASSWORD=''
+  msg 'حساب مدیریت قبلی حفظ شد.'
 fi
 
 msg 'ایجاد سرویس API با دسترسی محدود...'
@@ -119,8 +121,18 @@ $DOMAIN {
     handle /uploads/* {
         reverse_proxy 127.0.0.1:3477
     }
+    redir /admin /admin/ 308
+    handle /admin/* {
+        root * /opt/invite/site
+        file_server
+    }
+    handle /assets/* {
+        root * /opt/invite/site
+        file_server
+    }
     handle {
         root * /opt/invite/site
+        try_files {path} /index.html
         file_server
     }
 }

@@ -54,6 +54,10 @@ async function start() {
   db.run('CREATE TABLE IF NOT EXISTS credentials (id INTEGER PRIMARY KEY CHECK(id=1), password_hash TEXT NOT NULL)');
   db.run('CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, csrf TEXT NOT NULL, expires_at INTEGER NOT NULL)');
   db.run('CREATE TABLE IF NOT EXISTS responses (id INTEGER PRIMARY KEY AUTOINCREMENT, request_id TEXT UNIQUE NOT NULL, person_name TEXT NOT NULL, date_iso TEXT NOT NULL, date_fa TEXT NOT NULL, time_text TEXT NOT NULL, food TEXT NOT NULL, created_at TEXT NOT NULL)');
+  db.run('CREATE TABLE IF NOT EXISTS invitations (id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT NOT NULL UNIQUE, name TEXT NOT NULL, config_json TEXT NOT NULL, created_at TEXT NOT NULL)');
+  const responseFields=db.exec('PRAGMA table_info(responses)')[0].values.map(row=>row[1]);
+  const migrationNeeded=!responseFields.includes('invitation_id');
+  if(migrationNeeded)db.run('ALTER TABLE responses ADD COLUMN invitation_id INTEGER');
   function persist() {
     const temp = dbFile + '.tmp';
     fs.writeFileSync(temp, Buffer.from(db.export()), {mode:0o600});
@@ -76,7 +80,7 @@ async function start() {
     }
     return conf;
   }
-  if (!fs.existsSync(dbFile)) persist();
+  if (!fs.existsSync(dbFile) || migrationNeeded) persist();
   if (process.argv[2] === 'bootstrap') {
     let password='';
     for await (const chunk of process.stdin) password+=chunk;
@@ -84,10 +88,37 @@ async function start() {
     if (!first('SELECT id FROM credentials WHERE id=1')) {
       if (password.length<12 || password.length>256) throw new Error('Admin password must contain between 12 and 256 characters');
       db.run('INSERT INTO credentials(id,password_hash) VALUES(1,?)',[makePassword(password)]);
-      persist(); console.log('Admin account created.');
-    } else console.log('Admin account already exists. Password unchanged.');
+      persist(); console.log('CREATED');
+    } else console.log('EXISTS');
     db.close();
     return;
+  }
+  // Each private invitation has its own editable settings and a stable database ID.
+  const slugPattern=/^[\p{L}\p{N}][\p{L}\p{N}-]{0,79}$/u;
+  const reserved=new Set(['admin','api','assets','uploads','favicon.ico','robots.txt','index.html']);
+  function normalizeSlug(raw) {
+    if(typeof raw!=='string')return '';
+    const slug=raw.normalize('NFKC').trim().toLocaleLowerCase('en').replace(/[\u200c\u200d\s_]+/gu,'-').replace(/[^\p{L}\p{N}-]+/gu,'').replace(/^-+|-+$/g,'').replace(/-+/g,'-');
+    return slugPattern.test(slug)&&!reserved.has(slug)?slug:'';
+  }
+  function invitationBySlug(slug){return first('SELECT * FROM invitations WHERE slug=?',[slug]);}
+  function invitationById(id){return first('SELECT * FROM invitations WHERE id=?',[id]);}
+  function invitationConfig(row){
+    const saved=JSON.parse(row.config_json || '{}');
+    return {...defaults,...saved,personName:row.name};
+  }
+  function validateConfig(config) {
+    if(!config || typeof config!=='object' || Array.isArray(config))return false;
+    return Object.entries(config).every(([key,value])=>Object.hasOwn(defaults,key)&&typeof value==='string'&&value.length<=500&&(!key.endsWith('Image')||!value||/^\/uploads\/[a-f0-9-]{36}\.(png|jpg|webp|gif)$/.test(value)));
+  }
+  function sendInvitation(req,res,row) {
+    res.json({...invitationConfig(row),slug:row.slug});
+  }
+  function validateInviteId(req,res,next){
+    if(!/^[1-9]\d*$/.test(req.params.id))return res.status(400).json({error:'شناسه دعوت نامعتبر است.'});
+    const row=invitationById(Number(req.params.id));
+    if(!row)return res.status(404).json({error:'این دعوت وجود ندارد.'});
+    req.invitation=row;next();
   }
   const app=express();
   app.disable('x-powered-by');
@@ -134,12 +165,19 @@ async function start() {
   function setCookie(res,value,maxAge) {
     res.append('Set-Cookie',cookieName+'='+value+'; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age='+maxAge);
   }
-  app.get('/api/health',(req,res)=>res.json({ok:true,version:2}));
-  app.get('/api/public/config',(req,res)=>res.json(getConfig()));
+  app.get('/api/health',(req,res)=>res.json({ok:true,version:3}));
+  app.get('/api/public/config',(req,res)=>{
+    const {slug}=req.query;
+    if(slug===undefined || slug==='')return res.json(getConfig());
+    if(typeof slug!=='string'||slug!==normalizeSlug(slug))return res.status(404).json({error:'لینک دعوت پیدا نشد.'});
+    const invite=invitationBySlug(slug);
+    if(!invite)return res.status(404).json({error:'لینک دعوت پیدا نشد.'});
+    return sendInvitation(req,res,invite);
+  });
   app.post('/api/public/response',(req,res)=>{
     if(!rateLimit('submit:'+clientIP(req),10,3600000)) return res.status(429).json({error:'تعداد درخواست‌ها زیاد است. کمی بعد دوباره امتحان کنید.'});
     const body=req.body||{};
-    const {date,time,food,requestId}=body;
+    const {date,time,food,requestId,slug}=body;
     if(typeof date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(date)||typeof time!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)||!foodNames.includes(food)||typeof requestId!=='string'|| !/^[a-f0-9-]{36}$/.test(requestId)) return res.status(400).json({error:'اطلاعات قرار درست نیست.'});
     const parsed=new Date(date+'T12:00:00Z');
     if(Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0,10)!==date) return res.status(400).json({error:'تاریخ نامعتبر است.'});
@@ -148,9 +186,15 @@ async function start() {
     if(parsed<earliest||parsed>latest) return res.status(400).json({error:'تاریخ انتخاب‌شده خارج از محدوده است.'});
     const format=new Intl.DateTimeFormat('fa-IR-u-ca-persian',{year:'numeric',month:'long',day:'numeric',timeZone:'UTC'});
     const dateFa=format.format(parsed);
-    const person=getConfig().personName.slice(0,120);
+    let invite=null;
+    if(slug!==undefined && slug!==''){
+      if(typeof slug!=='string'||slug!==normalizeSlug(slug))return res.status(404).json({error:'لینک دعوت پیدا نشد.'});
+      invite=invitationBySlug(slug);
+      if(!invite)return res.status(404).json({error:'لینک دعوت پیدا نشد.'});
+    }
+    const person=invite?invite.name:getConfig().personName.slice(0,120);
     try {
-      db.run('INSERT OR IGNORE INTO responses(request_id,person_name,date_iso,date_fa,time_text,food,created_at) VALUES(?,?,?,?,?,?,?)',[requestId,person,date,dateFa,time,food,new Date().toISOString()]);
+      db.run('INSERT OR IGNORE INTO responses(request_id,person_name,date_iso,date_fa,time_text,food,created_at,invitation_id) VALUES(?,?,?,?,?,?,?,?)',[requestId,person,date,dateFa,time,food,new Date().toISOString(),invite?invite.id:null]);
       persist();
       const answer=first('SELECT id FROM responses WHERE request_id=?',[requestId]);
       res.status(201).json({ok:true,id:answer.id,dateFa});
@@ -175,6 +219,52 @@ async function start() {
     db.run('DELETE FROM sessions WHERE token_hash=?',[req.adminSession.tokenHash]);persist();
     setCookie(res,'',0);res.json({ok:true});
   });
+  app.get('/api/admin/invitations',requireAdmin,(req,res)=>{
+    res.json(all('SELECT i.id,i.slug,i.name,i.created_at,(SELECT COUNT(*) FROM responses r WHERE r.invitation_id=i.id) AS responses_count FROM invitations i ORDER BY i.id DESC'));
+  });
+  app.post('/api/admin/invitations',requireAdmin,(req,res)=>{
+    const input=req.body || {};
+    const name=typeof input.name==='string'?input.name.trim():'';
+    if(!name || name.length>120)return res.status(400).json({error:'نام شخص را وارد کن (حداکثر ۱۲۰ کاراکتر).'});
+    const explicit=typeof input.slug==='string' && !!input.slug.trim();
+    const base=normalizeSlug(explicit?input.slug:name);
+    if(!base)return res.status(400).json({error:'اسم لینک نامعتبر است. از حروف فارسی یا انگلیسی و عدد استفاده کن.'});
+    let slug=base;
+    if(!explicit){
+      for(let suffix=2;invitationBySlug(slug);suffix++){
+        slug=base+'-'+suffix;
+        if(slug.length>80)return res.status(400).json({error:'آدرس انتخاب‌شده طولانی است.'});
+      }
+    }else if(invitationBySlug(slug))return res.status(409).json({error:'این آدرس قبلاً ساخته شده است.'});
+    const config={...getConfig(),personName:name};
+    db.run('INSERT INTO invitations(slug,name,config_json,created_at) VALUES(?,?,?,?)',[slug,name,JSON.stringify(config),new Date().toISOString()]);
+    const id=first('SELECT last_insert_rowid() AS id').id;
+    persist();
+    res.status(201).json({id,slug,name,config});
+  });
+  app.get('/api/admin/invitations/:id',requireAdmin,validateInviteId,(req,res)=>{
+    const i=req.invitation;
+    res.json({id:i.id,name:i.name,slug:i.slug,config:invitationConfig(i)});
+  });
+  app.put('/api/admin/invitations/:id',requireAdmin,validateInviteId,(req,res)=>{
+    const input=req.body || {};
+    const name=typeof input.name==='string'?input.name.trim():'';
+    const slug=normalizeSlug(input.slug);
+    if(!name||name.length>120)return res.status(400).json({error:'نام شخص معتبر نیست.'});
+    if(!slug || input.slug!==slug)return res.status(400).json({error:'آدرس اختصاصی معتبر نیست.'});
+    if(!validateConfig(input.config))return res.status(400).json({error:'تنظیمات دعوت معتبر نیست.'});
+    if(slug!==req.invitation.slug&&invitationBySlug(slug))return res.status(409).json({error:'این آدرس قبلاً استفاده شده است.'});
+    const config={...defaults,...input.config,personName:name};
+    try{
+      db.run('UPDATE invitations SET slug=?,name=?,config_json=? WHERE id=?',[slug,name,JSON.stringify(config),req.invitation.id]);
+      persist();
+      res.json({id:req.invitation.id,name,slug,config});
+    }catch(error){console.error(error);res.status(500).json({error:'ذخیره دعوت انجام نشد.'});}
+  });
+  app.delete('/api/admin/invitations/:id',requireAdmin,validateInviteId,(req,res)=>{
+    // Historical responses remain available in the "all responses" view.
+    db.run('DELETE FROM invitations WHERE id=?',[req.invitation.id]);persist();res.json({ok:true});
+  });
   app.get('/api/admin/config',requireAdmin,(req,res)=>res.json(getConfig()));
   app.put('/api/admin/config',requireAdmin,(req,res)=>{
     const incoming=req.body;
@@ -189,17 +279,31 @@ async function start() {
       db.run('COMMIT');persist();res.json({ok:true,config:getConfig()});
     } catch(error){try{db.run('ROLLBACK');}catch{} console.error(error);res.status(500).json({error:'ذخیره تنظیمات ناموفق بود.'});}
   });
+  function responseFilter(req){
+    const selected=req.query.invitationId;
+    if(selected===undefined||selected==='all')return {where:'',params:[]};
+    if(selected==='legacy')return {where:'WHERE invitation_id IS NULL',params:[]};
+    if(typeof selected==='string' && /^[1-9]\d*$/.test(selected))return {where:'WHERE invitation_id=?',params:[Number(selected)]};
+    return null;
+  }
   app.get('/api/admin/responses',requireAdmin,(req,res)=>{
+    const filter=responseFilter(req);
+    if(!filter)return res.status(400).json({error:'فیلتر نامعتبر است.'});
     const limit=Math.min(200,Math.max(1,Number(req.query.limit)||100));
-    res.json({total:first('SELECT COUNT(*) AS count FROM responses').count,rows:all('SELECT id,person_name,date_iso,date_fa,time_text,food,created_at FROM responses ORDER BY id DESC LIMIT ?',[limit])});
+    const total=first('SELECT COUNT(*) AS count FROM responses '+filter.where,filter.params).count;
+    const rows=all('SELECT id,invitation_id,person_name,date_iso,date_fa,time_text,food,created_at FROM responses '+filter.where+' ORDER BY id DESC LIMIT ?',[...filter.params,limit]);
+    res.json({total,rows});
   });
   app.get('/api/admin/responses.csv',requireAdmin,(req,res)=>{
-    const escapeCell=v=>{
-      let value=String(v??'');
-      if(/^[=+\-@\t\r]/.test(value)) value="'"+value;
-      return '"'+value.replace(/"/g,'""')+'"';
+    const filter=responseFilter(req);
+    if(!filter)return res.status(400).json({error:'فیلتر نامعتبر است.'});
+    const escapeCell=value=>{
+      let v=String(value??'');
+      if(/^[=+\-@\t\r]/.test(v))v="'"+v;
+      return '"'+v.replace(/"/g,'""')+'"';
     };
-    const csv=[['ردیف','نام شخص','تاریخ شمسی','تاریخ میلادی','ساعت','انتخاب','زمان ثبت'],...all('SELECT id,person_name,date_fa,date_iso,time_text,food,created_at FROM responses ORDER BY id DESC').map(x=>[x.id,x.person_name,x.date_fa,x.date_iso,x.time_text,x.food,x.created_at])].map(row=>row.map(escapeCell).join(',')).join('\r\n');
+    const rows=all('SELECT r.id,r.person_name,i.slug,r.date_fa,r.date_iso,r.time_text,r.food,r.created_at FROM responses r LEFT JOIN invitations i ON i.id=r.invitation_id '+filter.where.replace('invitation_id','r.invitation_id')+' ORDER BY r.id DESC',filter.params);
+    const csv=[['ردیف','شخص','لینک','تاریخ شمسی','تاریخ میلادی','ساعت','انتخاب','زمان ثبت'],...rows.map(x=>[x.id,x.person_name,x.slug||'',x.date_fa,x.date_iso,x.time_text,x.food,x.created_at])].map(row=>row.map(escapeCell).join(',')).join('\r\n');
     res.type('text/csv; charset=utf-8').set('Content-Disposition','attachment; filename="invite-responses.csv"').send('\ufeff'+csv);
   });
   app.post('/api/admin/change-password',requireAdmin,(req,res)=>{

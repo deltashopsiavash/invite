@@ -5,7 +5,15 @@ REPO_URL=https://github.com/deltashopsiavash/invite.git
 APP_DIR=/opt/invite
 fail(){ printf '❌ %s\n' "$*" >&2;exit 1; }
 [ "$(id -u)" -eq 0 ] || fail 'از sudo استفاده کن.'
-[ -n "$DOMAIN" ] || fail 'دامنه را وارد کن. نمونه: sudo bash install.sh invite.example.com'
+if [ -z "$DOMAIN" ]; then
+  echo 'دامنه سایت را وارد کن (بدون https://). مثال: somi.deltamarket5.ir'
+  if [ -r /dev/tty ]; then
+    IFS= read -r -p 'دامنه: ' DOMAIN </dev/tty || true
+  fi
+  [ -n "$DOMAIN" ] || fail 'دامنه وارد نشد. برای نصب بدون حالت تعاملی: curl -fsSL https://raw.githubusercontent.com/deltashopsiavash/invite/main/scripts/install.sh | sudo bash -s -- somi.deltamarket5.ir'
+fi
+DOMAIN="$(printf '%s' "$DOMAIN" | tr '[:upper:]' '[:lower:]')"
+[[ "$DOMAIN" =~ ^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$ ]] || fail 'دامنه نامعتبر است؛ فقط نام دامنه را بنویس.'
 if ! command -v git >/dev/null; then
   export DEBIAN_FRONTEND=noninteractive
   apt-get update -y
