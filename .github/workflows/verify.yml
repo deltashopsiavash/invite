@@ -1,4 +1,4 @@
-name: Verify Invite V2
+name: Verify Invite
 on:
   push:
     branches: [main]
@@ -20,4 +20,4 @@ jobs:
       - name: Check shell scripts
         run: bash -n scripts/install.sh scripts/update.sh scripts/deploy.sh
       - name: Integration tests
-        run: node --test tests/integration.test.js
+        run: node --test tests/*.test.js

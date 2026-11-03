@@ -6,11 +6,11 @@ APP_DIR=/opt/invite
 fail(){ printf '❌ %s\n' "$*" >&2;exit 1; }
 [ "$(id -u)" -eq 0 ] || fail 'از sudo استفاده کن.'
 if [ -z "$DOMAIN" ]; then
-  echo 'دامنه سایت را وارد کن (بدون https://). مثال: somi.deltamarket5.ir'
+  echo 'دامنه سایت را وارد کن (بدون https://). مثال: domain.ir'
   if [ -r /dev/tty ]; then
     IFS= read -r -p 'دامنه: ' DOMAIN </dev/tty || true
   fi
-  [ -n "$DOMAIN" ] || fail 'دامنه وارد نشد. برای نصب بدون حالت تعاملی: curl -fsSL https://raw.githubusercontent.com/deltashopsiavash/invite/main/scripts/install.sh | sudo bash -s -- somi.deltamarket5.ir'
+  [ -n "$DOMAIN" ] || fail 'دامنه وارد نشد. برای نصب بدون حالت تعاملی: curl -fsSL https://raw.githubusercontent.com/deltashopsiavash/invite/main/scripts/install.sh | sudo bash -s -- domain.ir'
 fi
 DOMAIN="$(printf '%s' "$DOMAIN" | tr '[:upper:]' '[:lower:]')"
 [[ "$DOMAIN" =~ ^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$ ]] || fail 'دامنه نامعتبر است؛ فقط نام دامنه را بنویس.'

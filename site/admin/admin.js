@@ -28,11 +28,18 @@
     $('login-box').hidden=isAuth;$('dashboard').hidden=!isAuth;
   }
   async function load(){
+    let data;
     try{
-      const data=await api('/api/admin/session');
-      if(data.authenticated){csrf=data.csrf;await openDashboard();}
-      else toggleAuth(false);
-    }catch(error){toggleAuth(false);$('login-error').textContent=error.message;}
+      data=await api('/api/admin/session');
+    }catch(error){
+      toggleAuth(false);
+      $('login-error').textContent='بررسی نشست انجام نشد: '+error.message;
+      return;
+    }
+    if(data.authenticated){
+      csrf=data.csrf;
+      await openDashboard();
+    }else toggleAuth(false);
   }
   $('login-form').addEventListener('submit',async(event)=>{
     event.preventDefault();const pass=$('admin-password').value;
@@ -56,9 +63,19 @@
   }
   async function openDashboard(){
     toggleAuth(true);
-    await refreshInvitations();
-    setTab('invitations');
+    $('dashboard-error').hidden=true;
+    $('retry-dashboard').hidden=true;
+    try{
+      await refreshInvitations();
+      setTab('invitations');
+    }catch(error){
+      console.error('Dashboard initialization:',error);
+      $('dashboard-error').hidden=false;
+      $('retry-dashboard').hidden=false;
+      $('dashboard-error').textContent='بارگذاری پنل کامل نشد: '+error.message+' — روی «تلاش مجدد» بزن.';
+    }
   }
+  $('retry-dashboard').addEventListener('click',openDashboard);
   async function refreshInvitations(selectId){
     invitations=await api('/api/admin/invitations');
     renderInvitationList();

@@ -15,7 +15,7 @@ if [ -z "$DOMAIN" ] && [ -f "$SITE_CONF" ]; then
   DOMAIN="$(awk '/^[[:space:]]*[A-Za-z0-9.-]+[[:space:]]+[{][[:space:]]*$/{print $1;exit}' "$SITE_CONF")"
 fi
 DOMAIN="$(printf '%s' "$DOMAIN" | tr '[:upper:]' '[:lower:]')"
-[[ "$DOMAIN" =~ ^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$ ]] || fail 'دامنه پیدا نشد. نمونه: sudo bash /opt/invite/scripts/deploy.sh siavash.deltamarket5.ir'
+[[ "$DOMAIN" =~ ^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$ ]] || fail 'دامنه پیدا نشد. نمونه: sudo bash /opt/invite/scripts/deploy.sh domain.ir'
 [ "${#DOMAIN}" -le 253 ] || fail 'نام دامنه بیش از اندازه بلند است.'
 
 if ! command -v node >/dev/null || ! command -v npm >/dev/null || ! command -v caddy >/dev/null || ! command -v openssl >/dev/null; then
@@ -25,7 +25,7 @@ if ! command -v node >/dev/null || ! command -v npm >/dev/null || ! command -v c
   apt-get install -y nodejs npm caddy openssl ca-certificates curl
 fi
 MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
-[ "$MAJOR" -ge 18 ] || fail 'برای نسخه دوم Node.js 18 یا بالاتر نیاز است.'
+[ "$MAJOR" -ge 18 ] || fail 'برای اجرای سایت Node.js 18 یا بالاتر نیاز است.'
 command -v curl >/dev/null || fail 'ابزار curl نصب نیست.'
 msg 'آماده‌سازی مسیر ذخیره‌سازی دائمی...'
 if ! id invite >/dev/null 2>&1; then
@@ -66,7 +66,7 @@ msg 'ایجاد سرویس API با دسترسی محدود...'
 NODE_BINARY="$(command -v node)"
 cat > /etc/systemd/system/invite-api.service <<UNIT
 [Unit]
-Description=Invite V2 API
+Description=Invite API
 After=network.target
 
 [Service]
@@ -152,7 +152,7 @@ cat > /usr/local/bin/invite-update <<'WRAP'
 exec /bin/bash /opt/invite/scripts/update.sh "$@"
 WRAP
 chmod 755 /usr/local/bin/invite-update
-printf '\n✅ نسخه دوم فعال شد: https://%s/\n' "$DOMAIN"
+printf '\n✅ سایت فعال شد: https://%s/\n' "$DOMAIN"
 printf '🔐 پنل مدیریت: https://%s/admin/\n' "$DOMAIN"
 if [ -n "$FIRST_PASSWORD" ]; then
   printf '\n============================================\n'

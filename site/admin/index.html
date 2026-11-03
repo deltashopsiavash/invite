@@ -4,8 +4,8 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#d7edff">
   <title>پنل مدیریت دعوت 💌</title>
-  <link rel="stylesheet" href="/admin/admin.css?v=3">
-  <script defer src="/admin/admin.js?v=3"></script>
+  <link rel="stylesheet" href="/admin/admin.css?v=4">
+  <script defer src="/admin/admin.js?v=4"></script>
 </head>
 <body>
   <div class="shell">
@@ -18,20 +18,43 @@
       </section>
       <section id="dashboard" hidden>
         <div class="dash-top"><div><h1>مدیریت دعوت 💕</h1><p>متن‌ها، تصویرها و جواب‌ها رو از همینجا مدیریت کن.</p></div><button type="button" class="btn ghost" id="logout">خروج</button></div>
+        <div id="dashboard-error" class="error" role="alert" hidden></div>
+        <button id="retry-dashboard" class="btn ghost" type="button" hidden>تلاش مجدد</button>
         <nav class="tabs" aria-label="بخش‌های مدیریت">
-          <button class="tab active" data-tab="content" type="button">✏️ متن‌ها</button>
+          <button class="tab active" data-tab="invitations" type="button">🔗 لینک‌های اختصاصی</button>
+          <button class="tab" data-tab="content" type="button">✏️ متن‌ها</button>
           <button class="tab" data-tab="images" type="button">🖼️ عکس و ایموجی</button>
           <button class="tab" data-tab="answers" type="button">💌 جواب‌ها</button>
           <button class="tab" data-tab="security" type="button">🔒 امنیت</button>
         </nav>
-        <section id="tab-content" class="tab-panel">
-          <div class="panel"><h2>نام شخص و متن مراحل</h2><p class="sub">هر تغییری که ذخیره کنی بلافاصله در سایت عمومی نمایش داده می‌شه.</p><div id="content-fields"></div></div>
+        <section id="tab-invitations" class="tab-panel">
+          <div class="panel">
+            <h2>ساخت لینک اختصاصی برای هر نفر</h2>
+            <p class="sub">اسم طرف رو بنویس؛ لینک مخصوصش به‌صورت خودکار ساخته می‌شه. می‌تونی نام مسیر رو هم خودت تعیین کنی.</p>
+            <form id="create-invite-form" class="create-invite">
+              <div><label for="new-person">نام شخص</label><input type="text" id="new-person" maxlength="120" required placeholder="مثلاً شخص"></div>
+              <div><label for="new-slug">اسم انتهای لینک (اختیاری)</label><input type="text" id="new-slug" maxlength="80" dir="auto" placeholder="مثلاً person"></div>
+              <button class="btn primary" type="submit">💌 ساخت لینک</button>
+            </form>
+            <p id="create-error" class="error" role="alert"></p>
+          </div>
+          <div class="panel"><h2>لینک‌های ساخته‌شده</h2><p class="sub">برای ویرایش یک لینک، «انتخاب و ویرایش» رو بزن.</p><div class="invite-grid" id="invite-list"></div></div>
+        </section>
+        <div class="panel selected-invite" id="selected-invite-bar" hidden>
+          <div><b>لینک در حال ویرایش:</b> <a id="selected-invite-url" target="_blank" rel="noopener noreferrer"></a></div>
+          <button class="btn ghost" type="button" id="copy-current-link">کپی لینک</button>
+        </div>
+        <section id="tab-content" class="tab-panel" hidden>
+          <div class="panel"><h2>ویرایش اطلاعات همین لینک</h2><p class="sub">متن‌ها و عکس‌های هر لینک مستقل هستند. آدرس این لینک را هم می‌توانی تغییر بدهی؛ با تغییر آدرس، لینک قدیمی دیگر باز نمی‌شود.</p>
+            <label for="invite-slug">آدرس انتهای لینک</label><input id="invite-slug" type="text" maxlength="80" dir="auto">
+            <div id="content-fields"></div>
+          </div>
         </section>
         <section id="tab-images" class="tab-panel" hidden>
           <div class="panel"><h2>عکس یا ایموجی هر مرحله</h2><p class="sub">برای هر مرحله می‌تونی ایموجی بنویسی یا تصویر JPG، PNG، WebP یا GIF زیر ۳ مگابایت بارگذاری کنی. عکس اولویت داره.</p><div id="icon-fields" class="icon-fields"></div></div>
         </section>
         <section id="tab-answers" class="tab-panel" hidden>
-          <div class="panel"><div class="answer-header"><div><h2>جواب‌های ثبت‌شده</h2><p class="sub" id="answers-count">در حال دریافت...</p></div><div class="answer-actions"><button class="btn ghost" type="button" id="refresh-answers">بروزرسانی</button><a class="btn outline" href="/api/admin/responses.csv" id="download-csv">دانلود CSV</a></div></div>
+          <div class="panel"><label for="answers-filter">نمایش جواب‌های</label><select id="answers-filter" class="answer-filter"><option value="all">همه لینک‌ها</option><option value="legacy">لینک اصلی (بدون اسم)</option></select><div class="answer-header"><div><h2>جواب‌های ثبت‌شده</h2><p class="sub" id="answers-count">در حال دریافت...</p></div><div class="answer-actions"><button class="btn ghost" type="button" id="refresh-answers">بروزرسانی</button><a class="btn outline" href="/api/admin/responses.csv" id="download-csv">دانلود CSV</a></div></div>
           <div class="table-wrap"><table><thead><tr><th>ردیف</th><th>نام</th><th>تاریخ شمسی</th><th>ساعت</th><th>انتخاب</th><th>زمان ثبت</th></tr></thead><tbody id="answers-body"></tbody></table></div></div>
         </section>
         <section id="tab-security" class="tab-panel" hidden>

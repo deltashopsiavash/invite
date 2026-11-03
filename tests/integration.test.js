@@ -35,12 +35,15 @@ test('persistent database, admin security and completed invitation flow',async()
     assert.equal(login.status,200);
     const {csrf}=await login.json();
     const cookie=login.headers.get('set-cookie').split(';')[0];
+    const restoredSession=await (await request('/api/admin/session','GET',null,{cookie})).json();
+    assert.equal(restoredSession.authenticated,true);
+    assert.equal(restoredSession.csrf,csrf);
     const auth={cookie,'x-invite-csrf':csrf};
-    assert.equal((await request('/api/admin/config','PUT',{personName:'نگار'}, {cookie})).status,403);
-    const setting=await request('/api/admin/config','PUT',{personName:'نگار',questionTitle:'بریم قرار؟'},auth);
+    assert.equal((await request('/api/admin/config','PUT',{personName:'شخص نمونه'}, {cookie})).status,403);
+    const setting=await request('/api/admin/config','PUT',{personName:'شخص نمونه',questionTitle:'بریم قرار؟'},auth);
     assert.equal(setting.status,200);
     const publicConfig=await (await request('/api/public/config')).json();
-    assert.equal(publicConfig.personName,'نگار');
+    assert.equal(publicConfig.personName,'شخص نمونه');
     const date=new Date(Date.now()+2*86400000).toISOString().slice(0,10);
     const responseId=crypto.randomUUID();
     const answer=await request('/api/public/response','POST',{date,time:'20:30',food:'پیتزا',requestId:responseId});
@@ -50,54 +53,54 @@ test('persistent database, admin security and completed invitation flow',async()
     const responses=await(await request('/api/admin/responses','GET',null,{cookie})).json();
     assert.equal(responses.total,1);
     assert.equal(responses.rows[0].food,'پیتزا');
-    assert.equal(responses.rows[0].person_name,'نگار');
+    assert.equal(responses.rows[0].person_name,'شخص نمونه');
     assert.ok(responses.rows[0].date_fa);
     // Each person receives a unique public URL and isolated settings / replies.
     assert.equal((await request('/api/admin/invitations')).status,401);
-    const createA=await request('/api/admin/invitations','POST',{name:'ساغر'},auth);
+    const createA=await request('/api/admin/invitations','POST',{name:'شخص'},auth);
     assert.equal(createA.status,201);
     const a=await createA.json();
-    assert.equal(a.slug,'ساغر');
-    const createB=await request('/api/admin/invitations','POST',{name:'مریم',slug:'maryam'},auth);
+    assert.equal(a.slug,'شخص');
+    const createB=await request('/api/admin/invitations','POST',{name:'شخص دوم',slug:'person2'},auth);
     assert.equal(createB.status,201);
     const b=await createB.json();
-    assert.equal(b.slug,'maryam');
-    assert.equal((await request('/api/admin/invitations','POST',{name:'تکراری',slug:'maryam'},auth)).status,409);
+    assert.equal(b.slug,'person2');
+    assert.equal((await request('/api/admin/invitations','POST',{name:'تکراری',slug:'person2'},auth)).status,409);
     assert.equal((await request('/api/public/config?slug=unknown')).status,404);
     const detailA=await (await request('/api/admin/invitations/'+a.id,'GET',null,{cookie})).json();
     const detailB=await (await request('/api/admin/invitations/'+b.id,'GET',null,{cookie})).json();
     const changeA=await request('/api/admin/invitations/'+a.id,'PUT',{
-      name:'ساغر',slug:'ساغر',config:{...detailA.config,questionTitle:'ساغر، با من میای قرار؟'}
+      name:'شخص',slug:'شخص',config:{...detailA.config,questionTitle:'شخص، با من میای قرار؟'}
     },auth);
     assert.equal(changeA.status,200);
-    const publicA=await (await request('/api/public/config?slug='+encodeURIComponent('ساغر'))).json();
-    const publicB=await (await request('/api/public/config?slug=maryam')).json();
-    assert.equal(publicA.questionTitle,'ساغر، با من میای قرار؟');
+    const publicA=await (await request('/api/public/config?slug='+encodeURIComponent('شخص'))).json();
+    const publicB=await (await request('/api/public/config?slug=person2')).json();
+    assert.equal(publicA.questionTitle,'شخص، با من میای قرار؟');
     assert.equal(publicB.questionTitle,detailB.config.questionTitle);
-    assert.equal(publicA.personName,'ساغر');
-    assert.equal(publicB.personName,'مریم');
+    assert.equal(publicA.personName,'شخص');
+    assert.equal(publicB.personName,'شخص دوم');
     const submitA=await request('/api/public/response','POST',{
-      date,time:'18:15',food:'قهوه',requestId:crypto.randomUUID(),slug:'ساغر'
+      date,time:'18:15',food:'قهوه',requestId:crypto.randomUUID(),slug:'شخص'
     });
     assert.equal(submitA.status,201);
     const submitB=await request('/api/public/response','POST',{
-      date,time:'19:40',food:'پاستا',requestId:crypto.randomUUID(),slug:'maryam'
+      date,time:'19:40',food:'پاستا',requestId:crypto.randomUUID(),slug:'person2'
     });
     assert.equal(submitB.status,201);
     const onlyA=await (await request('/api/admin/responses?invitationId='+a.id,'GET',null,{cookie})).json();
     const onlyB=await (await request('/api/admin/responses?invitationId='+b.id,'GET',null,{cookie})).json();
     assert.equal(onlyA.total,1);
     assert.equal(onlyB.total,1);
-    assert.equal(onlyA.rows[0].person_name,'ساغر');
-    assert.equal(onlyB.rows[0].person_name,'مریم');
+    assert.equal(onlyA.rows[0].person_name,'شخص');
+    assert.equal(onlyB.rows[0].person_name,'شخص دوم');
     const list=await (await request('/api/admin/invitations','GET',null,{cookie})).json();
     assert.equal(list.length,2);
     assert.ok(list.every(x=>x.responses_count===1));
     const csv=await request('/api/admin/responses.csv?invitationId='+a.id,'GET',null,{cookie});
     assert.equal(csv.status,200);
-    assert.ok((await csv.text()).includes('ساغر'));
+    assert.ok((await csv.text()).includes('شخص'));
     assert.equal((await request('/api/admin/invitations/'+a.id,'DELETE',{},auth)).status,200);
-    assert.equal((await request('/api/public/config?slug='+encodeURIComponent('ساغر'))).status,404);
+    assert.equal((await request('/api/public/config?slug='+encodeURIComponent('شخص'))).status,404);
     const totalRows=await (await request('/api/admin/responses','GET',null,{cookie})).json();
     assert.equal(totalRows.total,3); // historical answer remains after link deletion
     const imageBytes=Buffer.from('89504e470d0a1a0a0000000049454e44ae426082','hex');

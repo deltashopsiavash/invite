@@ -1,4 +1,4 @@
-# Invite 💌 — نسخه ۳: لینک اختصاصی برای هر شخص
+# Invite 💌 — راهنمای نصب و مدیریت
 
 سایت دعوت عاشقانه، فارسی و موبایل‌محور با قلب/پاکت صورتی متحرک روی بک‌گراند آبی، تقویم شمسی، پنل مدیریت، عکس/ایموجی اختیاری و ذخیره انتخاب‌های طرف مقابل.
 
@@ -14,13 +14,13 @@ curl -fsSL https://raw.githubusercontent.com/deltashopsiavash/invite/main/script
 
 نصاب از تو می‌پرسد:
 ```text
-دامنه: somi.deltamarket5.ir
+دامنه: domain.ir
 ```
 
 **فقط نام دامنه، بدون https://**. روی سروری که ترمینال تعاملی ندارد، می‌توانی دامنه را مستقیم بدهی:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/deltashopsiavash/invite/main/scripts/install.sh | sudo bash -s -- somi.deltamarket5.ir
+curl -fsSL https://raw.githubusercontent.com/deltashopsiavash/invite/main/scripts/install.sh | sudo bash -s -- domain.ir
 ```
 
 نصاب Git، Node.js، npm و Caddy را نصب می‌کند، برنامه را در `/opt/invite` کپی می‌کند، سرویس `invite-api` و HTTPS خودکار را پیکربندی می‌کند. برای کارکرد SSL، DNS و پورت‌های 80/443 باید درست باشند. نصب روی سروری که سرویس دیگری روی همین پورت‌ها دارد نیازمند بررسی تنظیمات قبلی است.
@@ -32,13 +32,13 @@ curl -fsSL https://raw.githubusercontent.com/deltashopsiavash/invite/main/script
 بعد از نصب به این صفحه برو:
 
 ```text
-https://YOUR-DOMAIN/admin/
+https://domain.ir/admin/
 ```
 
 در بخش «لینک‌های اختصاصی»، نام شخص را وارد کن. اگر نام انتهای لینک را خالی بگذاری، از اسم او ساخته می‌شود:
 
-- نام «ساغر» → `https://YOUR-DOMAIN/ساغر`
-- نام «مریم» با مسیر `maryam` → `https://YOUR-DOMAIN/maryam`
+- نام «شخص» → `https://domain.ir/person`
+- نام «شخص دوم» با مسیر `person2` → `https://domain.ir/person2`
 
 برای نام تکراری بدون تعیین مسیر، پسوند شماره افزوده می‌شود. در پنل هر لینک را انتخاب کن و متن‌ها، نام، عکس/ایموجی را جداگانه ویرایش و ذخیره کن. آدرس همان لینک قابلیت کپی دارد. اگر مسیر لینک را تغییر بدهی، **لینک قبلی از دسترس خارج می‌شود**.
 
@@ -90,3 +90,9 @@ sudo journalctl -u caddy -n 60 --no-pager
 Caddy: `/etc/caddy/sites/invite.caddy`
 
 رمزها با scrypt هش می‌شوند، نشست مدیریت کوکی HttpOnly/Secure/SameSite و CSRF دارد، سرور API فقط روی localhost اجرا می‌شود. از `/var/lib/invite` بکاپ خارج از سرور هم تهیه کن.
+
+## رفع مشکل صفحه مدیریت
+
+بعد از آپدیت، در پنل مدیریت از گزینه «لینک‌های اختصاصی» لینک بساز، سپس آن لینک را انتخاب کن تا تب «متن‌ها» و «عکس و ایموجی» برای همان لینک فعال شوند. اگر صفحه به نسخه قبلی کش شده بود، یک‌بار Refresh بدون کش (Ctrl + Shift + R) انجام بده.
+
+نشست مدیر با کوکی امن مرورگر حفظ می‌شود. صرفاً خراب شدن بارگذاری داده‌ها نباید باعث نمایش فرم ورود مجدد شود.
